@@ -52,5 +52,6 @@ mistral_ocr_save_md(ocr,md_file, by_page=FALSE, overwrite = TRUE, save_images=TR
 
 library(rmarkdown)
 html_file = "mydir/myfile.html"
-pandoc_convert(md_file, ouput=html_file)
+pandoc_convert(md_file, output = html_file,
+  options = c("--mathjax","--standalone"))
 ```
