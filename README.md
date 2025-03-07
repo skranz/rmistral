@@ -30,12 +30,13 @@ set_mistral_api_key("<YOUR MISTRAL AI API KEY>")
 # URL to your pdf file
 url = "https://raw.githubusercontent.com/skranz/rmistral/main/pdf_example/paper_excerpt.pdf"
 
-# Take a look at OCR
+# Convert the PDF at the URL to result object
+# Most relevant information are in ocr$pages.
+# To convert a local PDF file use instead the file argument
 ocr = mistral_ocr(url=url,timeout_sec = 120, include_images = TRUE)
-# for a local PDF file use instead the file argument
 
-# Save the resulting markdown file and all extracted images
-mistral_ocr_save_md(ocr, "mydir/myfile.md",
-    by_page=FALSE, overwrite = TRUE, save_images=TRUE)
+# Save as markdown file and all extracted images as separate files
+mistral_ocr_save_md(ocr, "mydir/myfile.md", by_page=FALSE, overwrite = TRUE, save_images=TRUE)
 ```
 
+Note that mistral returns the document per default as markdown. To convert it to other formats, you can use e.g. [pandoc](https://pandoc.org/). You can conveniently call pandoc from R with the `pandoc_convert` function from the `RMarkdown` package.
