@@ -22,21 +22,35 @@ If that does not yet work, download the ZIP and build locally the R project.
 Load library and specify Mistral API key.
 
 ```r
-library(rmistral)
-set_mistral_api_key("<YOUR MISTRAL AI API KEY>")
 ```
 
 ```r
-# URL to your pdf file
+# 1. Load library and set API key
+library(rmistral)
+set_mistral_api_key("<YOUR MISTRAL AI API KEY>")
+
+
+# 2. Specify URL to your pdf file
+#    To convert a local PDF file use instead the file argument
+#    in your mistral_ocr call.
+
 url = "https://raw.githubusercontent.com/skranz/rmistral/main/pdf_example/paper_excerpt.pdf"
 
-# Convert the PDF at the URL to result object
-# Most relevant information are in ocr$pages.
-# To convert a local PDF file use instead the file argument
+# 3. Convert the PDF at the URL to result object
+#    Most relevant information are in ocr$pages.
+
 ocr = mistral_ocr(url=url,timeout_sec = 120, include_images = TRUE)
 
-# Save as markdown file and all extracted images as separate files
-mistral_ocr_save_md(ocr, "mydir/myfile.md", by_page=FALSE, overwrite = TRUE, save_images=TRUE)
-```
+# 4. Save results as markdown file and all 
+#    extracted images as separate files
 
-Note that mistral returns the document per default as markdown. To convert it to other formats, you can use e.g. [pandoc](https://pandoc.org/). You can conveniently call pandoc from R with the `pandoc_convert` function from the `RMarkdown` package.
+md_file = "mydir/myfile.md"
+mistral_ocr_save_md(ocr,md_file, by_page=FALSE, overwrite = TRUE, save_images=TRUE)
+
+# 5. To convert to a different format, you can use e.g. pandoc.
+#    Here an example that converts to an HTML file
+
+library(rmarkdown)
+html_file = "mydir/myfile.html"
+pandoc_convert(md_file, ouput=html_file)
+```
