@@ -4,8 +4,9 @@ Title: Experimental R interface to Mistral AI API
 Version: 0.1.0
 Author: Sebastian Kranz
 Maintainer: Sebastian Kranz <sebastian.kranz@uni-ulm.de>
-Description: Test building an R interface to Mistral AI. Particular test OCR capabilties for PDF.
+Description: Currently implement only OCR capabilties for PDF conversion.
 License: GPL >= 2.0
 Encoding: UTF-8
 LazyData: true
-Depends: httr, stringi, restorepoint
+Depends: httr, stringi, restorepoint, base64enc
+RoxygenNote: 7.2.3

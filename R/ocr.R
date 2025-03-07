@@ -1,17 +1,17 @@
-#' Call Mistral OCR API
+#' Perform OCR using the Mistral API
 #'
-#' This function calls the Mistral OCR API to perform optical character recognition
-#' on a document specified by URL.
+#' This function sends a document (either via URL or file upload) to the Mistral OCR API for text extraction.
 #'
-#' @param url Character string. URL of the document to process.
-#' @param model Character string. The OCR model to use (default: "mistral-ocr-latest").
-#' @param include_image_base64 Logical. Whether to include base64-encoded images (default: TRUE).
+#' @param url Optional. The URL of the document to be processed.
+#' @param file Optional. A local file path or an uploaded file object.
+#' @param model The OCR model to use. Defaults to `"mistral-ocr-latest"`.
+#' @param include_images Logical. Whether to include images in the response. Defaults to `TRUE`.
+#' @param timeout_sec The timeout for the API request in seconds. Defaults to 300 (5 minutes).
 #' @param api_key Character string. Your Mistral API key. Best set globabally via calling \code{set_mistral_api_key}.
 #'
 #' @return List containing the result. The field \code{is_ok} should be TRUE if everything worked nicely. The element \code{pages} contains the extracted pages.
-#'
 #' @export
-mistral_ocr <- function(url=NULL, file=NULL, model = "mistral-ocr-latest", include_image_base64 = TRUE, timeout_sec = 60*5, api_key = mistral_api_key()) {
+mistral_ocr <- function(url=NULL, file=NULL, model = "mistral-ocr-latest", include_images = TRUE, timeout_sec = 60*5, api_key = mistral_api_key()) {
   restore.point("mistral_ocr")
 
   # Validate inputs
@@ -41,7 +41,7 @@ mistral_ocr <- function(url=NULL, file=NULL, model = "mistral-ocr-latest", inclu
       type = "document_url",
       document_url = url
     ),
-    include_image_base64 = include_image_base64
+    include_image_base64 = include_images
   )
 
   # Create a configuration with timeout
@@ -87,4 +87,8 @@ mistral_ocr <- function(url=NULL, file=NULL, model = "mistral-ocr-latest", inclu
   result$is_ok = TRUE
   result$url = url
   result
+}
+
+mistral_is_ok = function(x) {
+  isTRUE(x$is_ok)
 }

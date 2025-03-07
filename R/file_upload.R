@@ -1,7 +1,7 @@
 #' @title Upload a file for OCR processing
-#' @param api_key Your MistralAI API key
 #' @param file_path Path to the local file to upload
 #' @param purpose Purpose of the upload, default is "ocr"
+#' @param api_key Your MistralAI API key
 #' @return The file metadata as a list
 mistral_upload_file = function(file_path, purpose = "ocr", api_key = mistral_api_key()) {
 
