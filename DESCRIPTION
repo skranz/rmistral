@@ -8,3 +8,4 @@ Description: Test building an R interface to Mistral AI. Particular test OCR cap
 License: GPL >= 2.0
 Encoding: UTF-8
 LazyData: true
+Depends: httr, stringi, restorepoint

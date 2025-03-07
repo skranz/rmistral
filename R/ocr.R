@@ -1,294 +1,90 @@
-#' MistralAI OCR API Functions
+#' Call Mistral OCR API
 #'
-#' Functions to interact with MistralAI's OCR API services
-#' Requires: httr, jsonlite, dplyr (optional)
+#' This function calls the Mistral OCR API to perform optical character recognition
+#' on a document specified by URL.
+#'
+#' @param url Character string. URL of the document to process.
+#' @param model Character string. The OCR model to use (default: "mistral-ocr-latest").
+#' @param include_image_base64 Logical. Whether to include base64-encoded images (default: TRUE).
+#' @param api_key Character string. Your Mistral API key. Best set globabally via calling \code{set_mistral_api_key}.
+#'
+#' @return List containing the result. The field \code{is_ok} should be TRUE if everything worked nicely. The element \code{pages} contains the extracted pages.
+#'
+#' @export
+mistral_ocr <- function(url=NULL, file=NULL, model = "mistral-ocr-latest", include_image_base64 = TRUE, timeout_sec = 60*5, api_key = mistral_api_key()) {
+  restore.point("mistral_ocr")
 
-#' @title Perform OCR on a document from a URL
-#' @param api_key Your MistralAI API key
-#' @param document_url URL to the document (PDF or image)
-#' @param model OCR model to use, defaults to mistral-ocr-latest
-#' @param include_image_base64 Whether to include base64-encoded images in response
-#' @param document_type Type of document, either "document_url" or "image_url"
-#' @param output_file Optional file path to save the JSON response
-#' @return The OCR results as a list
-mistral_ocr <- function(api_key,
-                        document_url,
-                        model = "mistral-ocr-latest",
-                        include_image_base64 = TRUE,
-                        document_type = "document_url",
-                        output_file = NULL) {
-
-  if (is.null(api_key) || api_key == "") {
+  # Validate inputs
+  if (is.null(api_key)) {
     stop("API key is required")
   }
-
-  # Create request body
-  body <- list(
-    model = model,
-    document = list(
-      type = document_type,
-      document_url = document_url
-    )
-  )
-
-  if (document_type == "image_url") {
-    body$document$image_url <- document_url
-    body$document$document_url <- NULL
+  if (is.null(url)) {
+    if (is.null(file)) {
+      stop("You must provide an url or an file argument for the PDF file.")
+    }
+    if (is.character(file)) {
+      file = mistral_upload_file(file)
+    }
+    if (!is.null(file$id)) {
+      url = mistral_get_file_url(file,expiry = 1)
+    }
+  }
+  if (is.list(url)) url = url$url
+  if (is.null(url)) {
+    stop("No url could be generated")
   }
 
-  # Add optional parameters
-  if (include_image_base64) {
-    body$include_image_base64 <- include_image_base64
-  }
-
-  # Convert body to JSON
-  body_json <- jsonlite::toJSON(body, auto_unbox = TRUE)
-
-  # Make the API call
-  response <- httr::POST(
-    url = "https://api.mistral.ai/v1/ocr",
-    httr::add_headers(
-      "Content-Type" = "application/json",
-      "Authorization" = paste("Bearer", api_key)
-    ),
-    body = body_json
-  )
-
-  # Check for HTTP errors
-  httr::stop_for_status(response)
-
-  # Parse the response
-  result <- httr::content(response, "parsed")
-
-  # Save to file if output_file is provided
-  if (!is.null(output_file)) {
-    jsonlite::write_json(result, output_file, auto_unbox = TRUE, pretty = TRUE)
-  }
-
-  return(result)
-}
-
-#' @title Upload a file for OCR processing
-#' @param api_key Your MistralAI API key
-#' @param file_path Path to the local file to upload
-#' @param purpose Purpose of the upload, default is "ocr"
-#' @return The file metadata as a list
-mistral_upload_file <- function(api_key, file_path, purpose = "ocr") {
-
-  if (is.null(api_key) || api_key == "") {
-    stop("API key is required")
-  }
-
-  if (!file.exists(file_path)) {
-    stop("File does not exist: ", file_path)
-  }
-
-  # Make the API call
-  response <- httr::POST(
-    url = "https://api.mistral.ai/v1/files",
-    httr::add_headers(
-      "Authorization" = paste("Bearer", api_key)
-    ),
-    body = list(
-      purpose = purpose,
-      file = httr::upload_file(file_path)
-    ),
-    encode = "multipart"
-  )
-
-  # Check for HTTP errors
-  httr::stop_for_status(response)
-
-  # Parse the response
-  result <- httr::content(response, "parsed")
-
-  return(result)
-}
-
-#' @title Retrieve file metadata
-#' @param api_key Your MistralAI API key
-#' @param file_id ID of the file to retrieve
-#' @return The file metadata as a list
-mistral_get_file <- function(api_key, file_id) {
-
-  if (is.null(api_key) || api_key == "") {
-    stop("API key is required")
-  }
-
-  if (is.null(file_id) || file_id == "") {
-    stop("File ID is required")
-  }
-
-  # Make the API call
-  response <- httr::GET(
-    url = paste0("https://api.mistral.ai/v1/files/", file_id),
-    httr::add_headers(
-      "Accept" = "application/json",
-      "Authorization" = paste("Bearer", api_key)
-    )
-  )
-
-  # Check for HTTP errors
-  httr::stop_for_status(response)
-
-  # Parse the response
-  result <- httr::content(response, "parsed")
-
-  return(result)
-}
-
-#' @title Get a signed URL for file access
-#' @param api_key Your MistralAI API key
-#' @param file_id ID of the file to get URL for
-#' @param expiry Expiry time in hours, default is 24
-#' @return The signed URL information as a list
-mistral_get_file_url <- function(api_key, file_id, expiry = 24) {
-
-  if (is.null(api_key) || api_key == "") {
-    stop("API key is required")
-  }
-
-  if (is.null(file_id) || file_id == "") {
-    stop("File ID is required")
-  }
-
-  # Make the API call
-  response <- httr::GET(
-    url = paste0("https://api.mistral.ai/v1/files/", file_id, "/url"),
-    query = list(expiry = expiry),
-    httr::add_headers(
-      "Accept" = "application/json",
-      "Authorization" = paste("Bearer", api_key)
-    )
-  )
-
-  # Check for HTTP errors
-  httr::stop_for_status(response)
-
-  # Parse the response
-  result <- httr::content(response, "parsed")
-
-  return(result)
-}
-
-#' @title Perform OCR on an uploaded file
-#' @param api_key Your MistralAI API key
-#' @param file_id ID of the uploaded file
-#' @param model OCR model to use, defaults to mistral-ocr-latest
-#' @param include_image_base64 Whether to include base64-encoded images in response
-#' @param output_file Optional file path to save the JSON response
-#' @return The OCR results as a list
-mistral_ocr_from_file <- function(api_key,
-                                 file_id,
-                                 model = "mistral-ocr-latest",
-                                 include_image_base64 = TRUE,
-                                 output_file = NULL) {
-
-  if (is.null(api_key) || api_key == "") {
-    stop("API key is required")
-  }
-
-  if (is.null(file_id) || file_id == "") {
-    stop("File ID is required")
-  }
-
-  # Create request body
+  # Prepare the request body
   body <- list(
     model = model,
     document = list(
       type = "document_url",
-      document_url = file_id
-    )
+      document_url = url
+    ),
+    include_image_base64 = include_image_base64
   )
 
-  # Add optional parameters
-  if (include_image_base64) {
-    body$include_image_base64 <- include_image_base64
-  }
+  # Create a configuration with timeout
+  config <- httr::config(
+    connecttimeout = timeout_sec,
+    timeout = timeout_sec
+  )
 
-  # Convert body to JSON
-  body_json <- jsonlite::toJSON(body, auto_unbox = TRUE)
+  # Set up headers
+  headers <- c(
+    "Content-Type" = "application/json",
+    "Authorization" = paste("Bearer", api_key)
+  )
 
   # Make the API call
   response <- httr::POST(
     url = "https://api.mistral.ai/v1/ocr",
-    httr::add_headers(
-      "Content-Type" = "application/json",
-      "Authorization" = paste("Bearer", api_key)
-    ),
-    body = body_json
+    httr::add_headers(.headers = headers),
+    body = jsonlite::toJSON(body, auto_unbox = TRUE),
+    encode = "json",
+    config = config
   )
 
+  restore.point("post_processing")
   # Check for HTTP errors
-  httr::stop_for_status(response)
+  #httr::stop_for_status(response)
 
   # Parse the response
-  result <- httr::content(response, "parsed")
-
-  # Save to file if output_file is provided
-  if (!is.null(output_file)) {
-    jsonlite::write_json(result, output_file, auto_unbox = TRUE, pretty = TRUE)
+  content = try(httr::content(response, "text", encoding = "UTF-8"))
+  if (is(content,"try-error")) {
+    response$is_ok = FALSE
+    response$url = url
+    return(response)
   }
-
-  return(result)
-}
-
-#' @title Perform OCR workflow from a local file
-#' @param api_key Your MistralAI API key
-#' @param file_path Path to the local file for OCR
-#' @param model OCR model to use, defaults to mistral-ocr-latest
-#' @param include_image_base64 Whether to include base64-encoded images in response
-#' @param output_file Optional file path to save the JSON response
-#' @return The OCR results as a list
-mistral_ocr_workflow <- function(api_key,
-                                file_path,
-                                model = "mistral-ocr-latest",
-                                include_image_base64 = TRUE,
-                                output_file = NULL) {
-
-  # Step 1: Upload file
-  file_response <- mistral_upload_file(api_key, file_path)
-
-  # Extract file ID
-  file_id <- file_response$id
-
-  if (is.null(file_id)) {
-    stop("Failed to get file ID after upload")
+  result <- try(jsonlite::fromJSON(content))
+  if (is(result, "try-error")) {
+    content$status_code = response$status_code
+    content$url = url
+    content$is_ok = FALSE
+    return(content)
   }
-
-  # Wait briefly to ensure file is processed
-  Sys.sleep(2)
-
-  # Step 2: Perform OCR on the uploaded file
-  ocr_result <- mistral_ocr_from_file(
-    api_key = api_key,
-    file_id = file_id,
-    model = model,
-    include_image_base64 = include_image_base64,
-    output_file = output_file
-  )
-
-  return(ocr_result)
-}
-
-#' @title Extract plain text from OCR results
-#' @param ocr_result The OCR results returned by mistral_ocr functions
-#' @return A character string containing the extracted text
-extract_text_from_ocr <- function(ocr_result) {
-  if ("text" %in% names(ocr_result)) {
-    return(ocr_result$text)
-  } else if ("pages" %in% names(ocr_result) && length(ocr_result$pages) > 0) {
-    # Extract text from multiple pages and combine
-    text_pages <- sapply(ocr_result$pages, function(page) {
-      if ("text" %in% names(page)) {
-        return(page$text)
-      } else {
-        return("")
-      }
-    })
-    return(paste(text_pages, collapse = "\n\n"))
-  } else {
-    warning("Could not find text content in OCR results")
-    return("")
-  }
+  result$status_code = response$status_code
+  result$is_ok = TRUE
+  result$url = url
+  result
 }
